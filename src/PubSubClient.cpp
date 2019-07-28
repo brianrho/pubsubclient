@@ -12,6 +12,7 @@ PubSubClient::PubSubClient() {
     this->_client = NULL;
     this->stream = NULL;
     setCallback(NULL);
+    setMethodCallback(NULL, NULL);
 }
 
 PubSubClient::PubSubClient(Client& client) {
@@ -476,7 +477,7 @@ boolean PubSubClient::loop() {
     lastInActivity = t;
     uint8_t type = buffer[0]&0xF0;
     if (type == MQTTPUBLISH) {
-        if (callback) {
+        if (callback || self) {
             uint16_t tl = (buffer[llen+1]<<8)+buffer[llen+2]; /* topic length in bytes */
             memmove(buffer+llen+2,buffer+llen+3,tl); /* move topic inside buffer 1 byte to front */
             buffer[llen+2+tl] = 0; /* end the topic as a 'C' string with \x00 */
@@ -485,7 +486,10 @@ boolean PubSubClient::loop() {
             if ((buffer[0]&0x06) == MQTTQOS1) {
                 msgId = (buffer[llen+3+tl]<<8)+buffer[llen+3+tl+1];
                 payload = buffer+llen+3+tl+2;
-                callback(topic,payload,len-llen-3-tl-2);
+                if (callback)
+                    callback(topic,payload,len-llen-3-tl-2);
+                else
+                    m_callback(self, topic,payload,len-llen-3-tl-2);
 
                 buffer[0] = MQTTPUBACK;
                 buffer[1] = 2;
@@ -496,7 +500,10 @@ boolean PubSubClient::loop() {
 
             } else {
                 payload = buffer+llen+3+tl;
-                callback(topic,payload,len-llen-3-tl);
+                if (callback)
+                    callback(topic,payload,len-llen-3-tl);
+                else
+                    m_callback(self, topic,payload,len-llen-3-tl);
             }
         }
     } else if (type == MQTTPINGREQ) {
@@ -779,6 +786,12 @@ PubSubClient& PubSubClient::setServer(const char * domain, uint16_t port) {
 
 PubSubClient& PubSubClient::setCallback(MQTT_CALLBACK_SIGNATURE) {
     this->callback = callback;
+    return *this;
+}
+
+PubSubClient& PubSubClient::setMethodCallback(void * self, MQTT_METHOD_CALLBACK_SIGNATURE) {
+    this->self = self;
+    this->m_callback = m_callback;
     return *this;
 }
 

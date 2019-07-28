@@ -77,12 +77,13 @@
 // Maximum size of fixed header and variable length size header
 #define MQTT_MAX_HEADER_SIZE 5
 
-#if defined(ESP8266) || defined(ESP32)
+/*#if defined(ESP8266) || defined(ESP32)
 #include <functional>
-#define MQTT_CALLBACK_SIGNATURE std::function<void(char*, uint8_t*, unsigned int)> callback
-#else
-#define MQTT_CALLBACK_SIGNATURE void (*callback)(char*, uint8_t*, unsigned int)
-#endif
+#define MQTT_CALLBACK_SIGNATURE         std::function<void(char*, uint8_t*, unsigned int)> callback
+#define MQTT_METHOD_CALLBACK_SIGNATURE  std::function<void(void * self, char*, uint8_t*, unsigned int)> m_callback
+#else*/
+#define MQTT_CALLBACK_SIGNATURE         void (*callback)(char*, uint8_t*, unsigned int)
+#define MQTT_METHOD_CALLBACK_SIGNATURE  void (*m_callback)(void * self, char*, uint8_t*, unsigned int)
 
 #define CHECK_STRING_LENGTH(l,s) if (l+2+strlen(s) > MQTT_MAX_PACKET_SIZE) {_client->stop();return false;}
 
@@ -95,6 +96,8 @@ private:
    unsigned long lastInActivity;
    bool pingOutstanding;
    MQTT_CALLBACK_SIGNATURE;
+   MQTT_METHOD_CALLBACK_SIGNATURE;
+   void * self;
    uint16_t readPacket(uint8_t*);
    boolean readByte(uint8_t * result);
    boolean readByte(uint8_t * result, uint16_t * index);
@@ -130,6 +133,7 @@ public:
    PubSubClient& setServer(uint8_t * ip, uint16_t port);
    PubSubClient& setServer(const char * domain, uint16_t port);
    PubSubClient& setCallback(MQTT_CALLBACK_SIGNATURE);
+   PubSubClient& setMethodCallback(void * self, MQTT_METHOD_CALLBACK_SIGNATURE);
    PubSubClient& setClient(Client& client);
    PubSubClient& setStream(Stream& stream);
 
